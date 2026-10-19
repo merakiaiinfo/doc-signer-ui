@@ -54,7 +54,7 @@ npm install
 # Note: Ensure the API_BASE_URL inside your ui/src/services files maps to your port 3000 endpoint. 
 npm run dev
 ```
-
+Local development: Vite serves the UI, usually at http://localhost:5173. Its proxy in vite.config.js forwards requests beginning with /api to http://localhost:3000, where the backend runs.
 Open `http://localhost:5173` (or the respective Vite local port) to interact. 
 
 ---
