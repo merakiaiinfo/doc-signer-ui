@@ -70,3 +70,31 @@ Open `http://localhost:5173` (or the respective Vite local port) to interact.
     * Parses the base64 SVG-captured Author, Reviewer, and Approver signatures visually rendering them across the true bottom margins of the final document. 
     * Secures a SHA-512 hash matrix of the final sealed artifact prior to compressing to disk securely under AES-256-GCM. 
 5. **Retrieval**: Approved stakeholders can at any point download the securely locked version of the PDF completely intact via the `GET /api/documents/:id/download` route structure.
+
+---
+
+## Contributing
+
+Contributions are made through pull requests to the `main` branch. Contributors without write access should work from a fork:
+
+1. Sign in to GitHub and open [merakiaiinfo/doc-signer-ui](https://github.com/merakiaiinfo/doc-signer-ui).
+2. Click **Fork** and create a fork under your GitHub account.
+3. Clone your fork and create a branch for your change, replacing `YOUR-USERNAME` and the branch name as appropriate:
+
+    ```bash
+    git clone --branch main https://github.com/YOUR-USERNAME/doc-signer-ui.git
+    cd doc-signer-ui
+    git switch -c feature/describe-your-change
+    ```
+
+4. Make and commit your changes, then push the branch to your fork:
+
+    ```bash
+    git add .
+    git commit -m "Describe the change"
+    git push -u origin feature/describe-your-change
+    ```
+
+5. On GitHub, open a pull request from your fork's feature branch to `merakiaiinfo/doc-signer-ui` on the `main` branch. Review the base repository and branch before submitting.
+
+Contributors with write access should also create a feature branch and open a pull request; do not commit directly to `main`.
