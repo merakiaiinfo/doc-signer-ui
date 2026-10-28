@@ -1,4 +1,5 @@
 import { MOCK_DOCUMENTS, MOCK_ANALYTICS, MOCK_BOTTLENECKS } from '../mock/mockData';
+import * as mammoth from 'mammoth';
 
 const USE_MOCK = false; // Easily switch to false when backend is ready
 const API_BASE_URL = '/api';
@@ -45,8 +46,13 @@ export const docService = {
         if (USE_MOCK) return Promise.resolve(MOCK_DOCUMENTS.find(d => d.doc_id === id));
         const userId = localStorage.getItem('sim_user_id') || '4';
         const response = await fetch(`${API_BASE_URL}/documents/${id}`, {
-            headers: { 'x-user-id': userId }
+            headers: { 'x-user-id': userId },
+            cache: 'no-store'
         });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || `Document request failed (${response.status})`);
+        }
         return response.json();
     },
 
@@ -75,11 +81,20 @@ export const docService = {
     async getDocumentPreview(id) {
         if (USE_MOCK) return null;
         const userId = localStorage.getItem('sim_user_id') || '4';
-        // Use the preview endpoint which returns proper content-type for inline viewing
         const response = await fetch(`${API_BASE_URL}/documents/${id}/preview?userId=${userId}`);
-        if (!response.ok) throw new Error('Preview failed');
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || `Preview failed (${response.status})`);
+        }
         const blob = await response.blob();
-        return window.URL.createObjectURL(blob);
+        if (blob.type === 'application/pdf') {
+            return { type: 'pdf', url: window.URL.createObjectURL(blob) };
+        }
+        if (blob.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            const result = await mammoth.convertToHtml({ arrayBuffer: await blob.arrayBuffer() });
+            return { type: 'html', content: result.value };
+        }
+        throw new Error(`Unsupported preview file type: ${blob.type || 'unknown'}`);
     },
 
     // Transition a document
