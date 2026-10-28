@@ -10,6 +10,7 @@ const DocumentReviewView = () => {
     const navigate = useNavigate();
     const [doc, setDoc] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [comments, setComments] = useState('');
     const [returnReason, setReturnReason] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
@@ -23,6 +24,8 @@ const DocumentReviewView = () => {
     const [showTrail, setShowTrail] = useState(false);
     const [showOriginalPreview, setShowOriginalPreview] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewHtml, setPreviewHtml] = useState('');
+    const [previewError, setPreviewError] = useState('');
     const [hideSignatureManifest, setHideSignatureManifest] = useState(false);
 
     const currentUserId = localStorage.getItem('sim_user_id');
@@ -74,11 +77,19 @@ const DocumentReviewView = () => {
             const data = await docService.getDocumentById(id);
             setDoc(data);
             setSigners(data.signers || []);
+            try {
+                const preview = await docService.getDocumentPreview(id);
+                if (preview.type === 'pdf') setPreviewUrl(preview.url);
+                else setPreviewHtml(preview.content);
+            } catch (previewErr) {
+                setPreviewError(previewErr.message);
+            }
             if (data.current_stage_id === 1) {
                 setIsSetupMode(true);
             }
         } catch (err) {
             console.error("Failed to fetch document:", err);
+            setLoadError(err.message);
         } finally {
             setLoading(false);
         }
@@ -215,7 +226,7 @@ const DocumentReviewView = () => {
         </div>
     );
 
-    if (!doc) return <div className="p-8 text-center text-ruby font-bold">Document not found.</div>;
+    if (!doc) return <div className="p-8 text-center text-ruby font-bold">{loadError || 'Document not found.'}</div>;
 
     return (
         <div className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-100">
@@ -253,14 +264,16 @@ const DocumentReviewView = () => {
                     </button>
                     <button
                         onClick={async () => {
-                            if (previewUrl) {
+                            if (previewUrl || previewHtml) {
                                 setPreviewUrl(null);
+                                setPreviewHtml('');
                                 setShowOriginalPreview(false);
                                 return;
                             }
                             try {
-                                const url = await docService.getDocumentPreview(doc.doc_id);
-                                setPreviewUrl(url);
+                                const preview = await docService.getDocumentPreview(doc.doc_id);
+                                if (preview.type === 'pdf') setPreviewUrl(preview.url);
+                                else setPreviewHtml(preview.content);
                                 setShowOriginalPreview(true);
                             } catch (err) {
                                 alert('Unable to preview document: ' + err.message);
@@ -405,11 +418,20 @@ const DocumentReviewView = () => {
                             {/* Main Document Frame */}
                             {doc.storage_provider && doc.storage_provider !== 'NONE' ? (
                                 <div className="w-full flex-1 rounded-lg overflow-hidden border border-slate-200 shadow-inner bg-slate-50 flex flex-col min-h-[600px] relative">
-                                    <iframe
-                                        src={previewUrl || `/api/documents/${doc.doc_id}/preview?userId=${currentUserId}`}
-                                        className="w-full flex-1 border-0"
-                                        title="Compliance Document Frame"
-                                    />
+                                    {previewHtml ? (
+                                        <iframe
+                                            srcDoc={`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Georgia,serif;color:#1e293b;line-height:1.6;margin:40px auto;padding:0 32px;max-width:760px}img{max-width:100%;height:auto}table{border-collapse:collapse;max-width:100%}td,th{border:1px solid #cbd5e1;padding:6px}</style></head><body>${previewHtml}</body></html>`}
+                                            className="w-full flex-1 border-0 bg-white"
+                                            title="Compliance Document Frame"
+                                            sandbox=""
+                                        />
+                                    ) : previewUrl ? (
+                                        <iframe src={previewUrl} className="w-full flex-1 border-0" title="Compliance Document Frame" />
+                                    ) : (
+                                        <div className="flex flex-1 items-center justify-center bg-white p-8 text-sm text-slate-500">
+                                            {previewError || 'Loading document preview...'}
+                                        </div>
+                                    )}
                                     {/* Glass Placement Layer */}
                                     <div
                                         className={cn("absolute inset-0 z-20", (!isSetupMode || !activeSigner) && "pointer-events-none")}
