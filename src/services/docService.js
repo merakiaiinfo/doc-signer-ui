@@ -166,6 +166,21 @@ export const docService = {
         return response.json();
     },
 
+    async updateUserRoles(userId, roleIds) {
+        const actorId = localStorage.getItem('sim_user_id') || '4';
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/roles`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-id': actorId
+            },
+            body: JSON.stringify({ role_ids: roleIds })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Unable to update user roles.');
+        return result;
+    },
+
     async getDepartments() {
         const userId = localStorage.getItem('sim_user_id') || '4';
         const response = await fetch(`${API_BASE_URL}/admin/departments`, {

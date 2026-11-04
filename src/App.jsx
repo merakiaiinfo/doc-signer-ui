@@ -39,9 +39,10 @@ const ALL_NAV = [
 
 const Sidebar = ({ currentUser, onLogout }) => {
     const location = useLocation();
-    const allowed = ROLE_NAV[currentUser?.role] || [];
+    const roles = currentUser?.roles || [currentUser?.role].filter(Boolean);
+    const allowed = [...new Set(roles.flatMap(role => ROLE_NAV[role] || []))];
     const navItems = ALL_NAV.filter(n => allowed.includes(n.id));
-    const badge = ROLE_BADGE[currentUser?.role] || ROLE_BADGE.Author;
+    const roleLabel = roles.map(role => ROLE_BADGE[role]?.label || role).join(' / ') || ROLE_BADGE.Author.label;
 
     // Hide sidebar on review screen
     if (location.pathname.match(/^\/documents\/\d+$/)) return null;
@@ -54,7 +55,7 @@ const Sidebar = ({ currentUser, onLogout }) => {
                 </div>
                 <div>
                     <h1 className="text-base font-bold text-slate-800 tracking-tight uppercase leading-none">Doc Signer</h1>
-                    <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block mt-1">{badge.label} Access</span>
+                    <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block mt-1">{roleLabel} Access</span>
                 </div>
             </div>
 
@@ -123,6 +124,10 @@ const App = () => {
         return <LoginView onLogin={handleLogin} />;
     }
 
+    const roles = currentUser.roles || [currentUser.role].filter(Boolean);
+    const canViewDashboard = roles.some(role => ['Admin', 'Approver'].includes(role));
+    const isAdmin = roles.includes('Admin');
+
     return (
         <Router>
             <div className="flex min-h-screen bg-professional-mist">
@@ -130,17 +135,17 @@ const App = () => {
                 <div className="flex-1 flex flex-col min-w-0">
                     <Routes>
                         {/* Role-guarded routes */}
-                        {(currentUser.role === 'Admin' || currentUser.role === 'Approver') && (
+                        {canViewDashboard && (
                             <Route path="/" element={<DashboardView />} />
                         )}
-                        {currentUser.role !== 'Admin' && currentUser.role !== 'Approver' && (
+                        {!canViewDashboard && (
                             <Route path="/" element={<DocumentsListView currentUser={currentUser} />} />
                         )}
 
                         <Route path="/documents" element={<DocumentsListView currentUser={currentUser} />} />
                         <Route path="/documents/:id" element={<DocumentReviewView currentUser={currentUser} />} />
 
-                        {(currentUser.role === 'Admin') && (
+                        {isAdmin && (
                             <>
                                 <Route path="/audit-log" element={<AuditLogView />} />
                                 <Route path="/admin" element={<AdminManagementView />} />
