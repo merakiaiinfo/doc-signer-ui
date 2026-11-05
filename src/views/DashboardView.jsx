@@ -18,7 +18,8 @@ const DashboardView = () => {
     const [loading, setLoading] = useState(true);
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const currentUser = JSON.parse(localStorage.getItem('ds_current_user') || '{}');
-    const canCreate = ['Author', 'Admin'].includes(currentUser?.role);
+    const roles = currentUser?.roles || [currentUser?.role].filter(Boolean);
+    const canCreate = roles.some(role => ['Author', 'Admin'].includes(role));
 
     const fetchData = async () => {
         setLoading(true);

@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import UploadModal from '../components/UploadModal';
 
 const DocumentsListView = ({ currentUser }) => {
-    const canCreate = ['Author', 'Admin'].includes(currentUser?.role);
+    const roles = currentUser?.roles || [currentUser?.role].filter(Boolean);
+    const canCreate = roles.some(role => ['Author', 'Admin'].includes(role));
     const [documents, setDocuments] = useState([]);
     const [filteredDocs, setFilteredDocs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -46,10 +47,10 @@ const DocumentsListView = ({ currentUser }) => {
             // - If user is Reviewer: Stage 2
             // - If user is Approver: Stage 3
             docs = docs.filter(d => {
-                if (currentUser.role === 'Author') return d.current_stage_id === 1 || d.status === 'RETURNED_FOR_FIX';
-                if (currentUser.role === 'Reviewer') return d.current_stage_id === 2;
-                if (currentUser.role === 'Approver') return d.current_stage_id === 3;
-                return d.current_stage_id < 4; // Admin sees all active
+                if (roles.includes('Admin')) return d.current_stage_id < 4;
+                return (roles.includes('Author') && (d.current_stage_id === 1 || d.status === 'RETURNED_FOR_FIX')) ||
+                    (roles.includes('Reviewer') && d.current_stage_id === 2) ||
+                    (roles.includes('Approver') && d.current_stage_id === 3);
             });
         } else if (activeTab === 'completed') {
             docs = docs.filter(d => d.current_stage_id === 4 || d.status === 'CLOSED');
@@ -180,8 +181,8 @@ const DocumentsListView = ({ currentUser }) => {
                                         let actionText = 'View Details';
                                         if (doc.status === 'DRAFT') actionText = 'Edit Draft';
                                         else if (doc.status === 'CLOSED') actionText = 'Download PDF';
-                                        else if (doc.current_stage_id === 2 && currentUser.role === 'Reviewer') actionText = 'Sign & Forward';
-                                        else if (doc.current_stage_id === 3 && currentUser.role === 'Approver') actionText = 'Approve & Seal';
+                                        else if (doc.current_stage_id === 2 && roles.includes('Reviewer')) actionText = 'Sign & Forward';
+                                        else if (doc.current_stage_id === 3 && roles.includes('Approver')) actionText = 'Approve & Seal';
 
                                         return (
                                             <tr key={doc.doc_id} className="hover:bg-slate-50/20 transition-all group">

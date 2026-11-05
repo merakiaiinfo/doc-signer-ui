@@ -8,8 +8,12 @@ const AdminManagementView = () => {
     const [activeTab, setActiveTab] = useState('config'); // config, users, departments
     const [users, setUsers] = useState([]);
     const [departments, setDepartments] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [editingUser, setEditingUser] = useState(null);
+    const [selectedRoleIds, setSelectedRoleIds] = useState([]);
+    const [savingRoles, setSavingRoles] = useState(false);
     
     // Config states
     const [emailNotif, setEmailNotif] = useState(true);
@@ -20,12 +24,14 @@ const AdminManagementView = () => {
     const fetchAdminData = async () => {
         setLoading(true);
         try {
-            const [u, d] = await Promise.all([
+            const [u, d, r] = await Promise.all([
                 docService.getUsers(),
-                docService.getDepartments()
+                docService.getDepartments(),
+                docService.getRoles()
             ]);
             setUsers(u);
             setDepartments(d);
+            setRoles(r);
         } catch (err) {
             console.error("Failed to fetch admin data", err);
         } finally {
@@ -40,6 +46,25 @@ const AdminManagementView = () => {
     const handleSaveConfig = () => {
         alert(`System configuration changes authorized. Change record logged in Audit Ledger with note: "${auditNotes || 'System parameter update'}"`);
         setAuditNotes('');
+    };
+
+    const handleEditRoles = (user) => {
+        setEditingUser(user);
+        setSelectedRoleIds(roles.filter(role => user.roles?.includes(role.role_name)).map(role => role.role_id));
+    };
+
+    const handleSaveRoles = async () => {
+        if (!editingUser || selectedRoleIds.length === 0) return;
+        setSavingRoles(true);
+        try {
+            await docService.updateUserRoles(editingUser.user_id, selectedRoleIds);
+            await fetchAdminData();
+            setEditingUser(null);
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setSavingRoles(false);
+        }
     };
 
     if (loading) return (
@@ -248,17 +273,21 @@ const AdminManagementView = () => {
                                                 <span className="text-xs text-slate-650 font-semibold">{user.department}</span>
                                             </td>
                                             <td className="px-6 py-3.5">
-                                                <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider border rounded-full ${
-                                                    user.role === 'Admin'
-                                                        ? 'bg-ruby/5 border-ruby/25 text-ruby'
-                                                        : 'bg-primary/5 border-primary/20 text-primary'
-                                                }`}>
-                                                    {user.role}
-                                                </span>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {(user.roles || [user.role].filter(Boolean)).map(role => (
+                                                        <span key={role} className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider border rounded-full ${
+                                                            role === 'Admin'
+                                                                ? 'bg-ruby/5 border-ruby/25 text-ruby'
+                                                                : 'bg-primary/5 border-primary/20 text-primary'
+                                                        }`}>
+                                                            {role}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-3.5 text-right">
                                                 <div className="flex justify-end gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
-                                                    <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-primary transition-all">
+                                                    <button onClick={() => handleEditRoles(user)} title="Edit roles" className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-primary transition-all">
                                                         <Edit3 size={14} />
                                                     </button>
                                                     <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-ruby transition-all">
@@ -271,6 +300,36 @@ const AdminManagementView = () => {
                                 </tbody>
                             </table>
                         </div>
+                        {editingUser && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="presentation">
+                                <section role="dialog" aria-modal="true" aria-labelledby="edit-user-roles-title" className="w-full max-w-md bg-white rounded-lg shadow-xl border border-slate-200">
+                                    <div className="px-5 py-4 border-b border-slate-100">
+                                        <h2 id="edit-user-roles-title" className="text-sm font-bold text-slate-800">Roles for {editingUser.full_name}</h2>
+                                    </div>
+                                    <div className="p-5 space-y-3">
+                                        {roles.map(role => (
+                                            <label key={role.role_id} className="flex items-center gap-3 text-sm text-slate-700">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedRoleIds.includes(role.role_id)}
+                                                    onChange={() => setSelectedRoleIds(current => current.includes(role.role_id)
+                                                        ? current.filter(id => id !== role.role_id)
+                                                        : [...current, role.role_id])}
+                                                    className="h-4 w-4 accent-primary"
+                                                />
+                                                <span>{role.role_name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2">
+                                        <button onClick={() => setEditingUser(null)} className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 rounded">Cancel</button>
+                                        <button onClick={handleSaveRoles} disabled={savingRoles || selectedRoleIds.length === 0} className="px-3 py-2 text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 rounded">
+                                            {savingRoles ? 'Saving...' : 'Save roles'}
+                                        </button>
+                                    </div>
+                                </section>
+                            </div>
+                        )}
                     </div>
                 )}
 
