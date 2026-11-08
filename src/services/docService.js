@@ -109,7 +109,9 @@ export const docService = {
             },
             body: JSON.stringify(transitionData)
         });
-        return response.json();
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Transition failed (${response.status})`);
+        return result;
     },
 
     // Signature Management
