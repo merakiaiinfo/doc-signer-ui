@@ -12,7 +12,14 @@ export const docService = {
         const response = await fetch(`${API_BASE_URL}/documents`, {
             headers: { 'x-user-id': userId }
         });
-        return response.json();
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            throw new Error(data?.error || `Document list request failed (${response.status})`);
+        }
+        if (!Array.isArray(data)) {
+            throw new Error('Document list API returned an invalid response.');
+        }
+        return data;
     },
 
     // Create document (Using FormData for Actual File Upload)
